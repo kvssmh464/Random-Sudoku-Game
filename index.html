@@ -1,0 +1,561 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Random Sudoku Game</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 25px 15px;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app {
+    width: min(100%, 600px);
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 35px #0002;
+    text-align: center;
+}
+
+h1 {
+    color: #3730a3;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    color: #64748b;
+}
+
+.board {
+    width: min(100%, 450px);
+    aspect-ratio: 1;
+    margin: 25px auto;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    border: 3px solid #273449;
+}
+
+.cell {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    border: 1px solid #cbd5e1;
+    text-align: center;
+    font-size: clamp(16px, 4vw, 25px);
+    color: #3730a3;
+    outline: none;
+}
+
+.cell:focus {
+    background: #e0e7ff;
+}
+
+.cell.given {
+    background: #eef2f7;
+    color: #172033;
+    font-weight: bold;
+}
+
+.cell:nth-child(3n) {
+    border-right: 2px solid #273449;
+}
+
+.cell:nth-child(9n) {
+    border-right: 0;
+}
+
+.cell:nth-child(n+19):nth-child(-n+27),
+.cell:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 2px solid #273449;
+}
+
+.cell.invalid {
+    background: #fee2e2;
+    color: red;
+}
+
+button {
+    padding: 12px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    background: #4f46e5;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+.reset {
+    background: #64748b;
+}
+
+#message {
+    min-height: 25px;
+    font-weight: bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+    <h1>SUDOKU GAME</h1>
+
+    <p class="subtitle">
+        Fill empty boxes using numbers 1 to 9
+    </p>
+
+    <div class="board" id="board"></div>
+
+    <button onclick="checkBoard()">
+        Check Board
+    </button>
+
+    <button class="reset" onclick="resetBoard()">
+        New Game
+    </button>
+
+    <p id="message">Good luck!</p>
+
+</div>
+
+
+<script>
+
+// ===================================
+// 1. GENERATE RANDOM SUDOKU
+// ===================================
+
+function generateSudoku() {
+
+    let board = Array.from(
+        { length: 9 },
+        () => Array(9).fill(0)
+    );
+
+    // Check whether number can be placed
+
+    function checkMove(row, col, num) {
+
+        // Check row
+
+        for (let i = 0; i < 9; i++) {
+
+            if (board[row][i] === num) {
+                return false;
+            }
+
+        }
+
+        // Check column
+
+        for (let i = 0; i < 9; i++) {
+
+            if (board[i][col] === num) {
+                return false;
+            }
+
+        }
+
+        // Check 3x3 box
+
+        let r = Math.floor(row / 3) * 3;
+
+        let c = Math.floor(col / 3) * 3;
+
+        for (let i = r; i < r + 3; i++) {
+
+            for (let j = c; j < c + 3; j++) {
+
+                if (board[i][j] === num) {
+                    return false;
+                }
+
+            }
+
+        }
+
+        return true;
+
+    }
+
+
+    // Fill Sudoku using backtracking
+
+    function solve() {
+
+        for (let row = 0; row < 9; row++) {
+
+            for (let col = 0; col < 9; col++) {
+
+                if (board[row][col] === 0) {
+
+                    let numbers = [
+                        1, 2, 3, 4, 5, 6, 7, 8, 9
+                    ];
+
+                    // Random number order
+
+                    numbers.sort(
+                        () => Math.random() - 0.5
+                    );
+
+                    for (let num of numbers) {
+
+                        if (checkMove(row, col, num)) {
+
+                            board[row][col] = num;
+
+                            if (solve()) {
+                                return true;
+                            }
+
+                            board[row][col] = 0;
+
+                        }
+
+                    }
+
+                    return false;
+
+                }
+
+            }
+
+        }
+
+        return true;
+
+    }
+
+    solve();
+
+
+    // Create puzzle by removing numbers
+
+    let puzzle = board.map(row => [...row]);
+
+    let removed = 0;
+
+    while (removed < 45) {
+
+        let row = Math.floor(Math.random() * 9);
+
+        let col = Math.floor(Math.random() * 9);
+
+        if (puzzle[row][col] !== 0) {
+
+            puzzle[row][col] = 0;
+
+            removed++;
+
+        }
+
+    }
+
+    return puzzle;
+
+}
+
+
+// ===================================
+// 2. CREATE STARTING BOARD
+// ===================================
+
+let startingBoard = generateSudoku();
+
+let board = startingBoard.map(row => [...row]);
+
+
+// ===================================
+// 3. DISPLAY SUDOKU BOARD
+// ===================================
+
+function displayBoard() {
+
+    const boardElement =
+        document.getElementById("board");
+
+    boardElement.innerHTML = "";
+
+    for (let row = 0; row < 9; row++) {
+
+        for (let col = 0; col < 9; col++) {
+
+            const input =
+                document.createElement("input");
+
+            input.className = "cell";
+
+            input.type = "text";
+
+            input.inputMode = "numeric";
+
+            input.maxLength = 1;
+
+            // Original numbers
+
+            if (startingBoard[row][col] !== 0) {
+
+                input.value = startingBoard[row][col];
+
+                input.readOnly = true;
+
+                input.classList.add("given");
+
+            }
+
+            // Empty numbers
+
+            else {
+
+                input.value =
+                    board[row][col] === 0
+                    ? ""
+                    : board[row][col];
+
+                input.addEventListener("input", function() {
+
+                    let value = input.value
+                        .replace(/[^1-9]/g, "")
+                        .slice(0, 1);
+
+                    input.value = value;
+
+                    board[row][col] = value
+                        ? Number(value)
+                        : 0;
+
+                    input.classList.remove("invalid");
+
+                    document.getElementById("message")
+                        .innerText = "Keep going!";
+
+                });
+
+            }
+
+            boardElement.appendChild(input);
+
+        }
+
+    }
+
+}
+
+
+// ===================================
+// 4. CHECK ROW, COLUMN AND 3X3 BOX
+// ===================================
+
+function checkMove(row, col, num) {
+
+    // Check row
+
+    for (let i = 0; i < 9; i++) {
+
+        if (i !== col && board[row][i] === num) {
+            return false;
+        }
+
+    }
+
+    // Check column
+
+    for (let i = 0; i < 9; i++) {
+
+        if (i !== row && board[i][col] === num) {
+            return false;
+        }
+
+    }
+
+    // Find 3x3 box
+
+    let r = Math.floor(row / 3) * 3;
+
+    let c = Math.floor(col / 3) * 3;
+
+    // Check 3x3 box
+
+    for (let i = r; i < r + 3; i++) {
+
+        for (let j = c; j < c + 3; j++) {
+
+            if (
+                (i !== row || j !== col) &&
+                board[i][j] === num
+            ) {
+
+                return false;
+
+            }
+
+        }
+
+    }
+
+    return true;
+
+}
+
+
+// ===================================
+// 5. CHECK COMPLETE BOARD
+// ===================================
+
+function checkBoard() {
+
+    const cells =
+        document.querySelectorAll(".cell");
+
+    let hasEmpty = false;
+
+    let hasError = false;
+
+    for (let row = 0; row < 9; row++) {
+
+        for (let col = 0; col < 9; col++) {
+
+            let index = row * 9 + col;
+
+            cells[index].classList.remove("invalid");
+
+            let num = board[row][col];
+
+            // Ignore original numbers
+
+            if (startingBoard[row][col] !== 0) {
+                continue;
+            }
+
+            if (num === 0) {
+
+                hasEmpty = true;
+
+            }
+
+            else if (!checkMove(row, col, num)) {
+
+                cells[index].classList.add("invalid");
+
+                hasError = true;
+
+            }
+
+        }
+
+    }
+
+    let message =
+        document.getElementById("message");
+
+
+    // Display result
+
+    if (hasError) {
+
+        message.innerText =
+            "Wrong! Check your row, column or 3x3 box.";
+
+        message.style.color = "red";
+
+    }
+
+    else if (hasEmpty) {
+
+        message.innerText =
+            "Correct so far! Continue filling the board.";
+
+        message.style.color = "blue";
+
+    }
+
+    else {
+
+        message.innerText =
+            "Excellent! Sudoku completed successfully!";
+
+        message.style.color = "green";
+
+
+        // Start new game after 2 seconds
+
+        setTimeout(function() {
+
+            newGame();
+
+        }, 2000);
+
+    }
+
+}
+
+
+// ===================================
+// 6. NEW RANDOM GAME
+// ===================================
+
+function newGame() {
+
+    startingBoard = generateSudoku();
+
+    board = startingBoard.map(row => [...row]);
+
+    displayBoard();
+
+    document.getElementById("message").innerText =
+        "New random Sudoku game started!";
+
+    document.getElementById("message").style.color =
+        "#3730a3";
+
+}
+
+
+// ===================================
+// 7. RESET / NEW GAME BUTTON
+// ===================================
+
+function resetBoard() {
+
+    newGame();
+
+}
+
+
+// ===================================
+// 8. START GAME
+// ===================================
+
+displayBoard();
+
+</script>
+
+</body>
+</html>
